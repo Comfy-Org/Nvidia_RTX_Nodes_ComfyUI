@@ -84,7 +84,7 @@ class RTXVideoSuperResolution(io.ComfyNode):
             sr.output_height = output_height
             sr.load()
 
-            out_tensor = torch.empty((images.shape[0], output_height, output_width, c), device=images.device, dtype=images.dtype)
+            out_tensor = torch.empty((images.shape[0], output_height, output_width, c), device="cuda", dtype=torch.float32)
             for i in range(0, images.shape[0], batch_size):
                 batch = images[i:i + batch_size]
 
@@ -95,7 +95,7 @@ class RTXVideoSuperResolution(io.ComfyNode):
                     dlpack_out = sr.run(input_frame).image
                     out_tensor[i + j: i + j + 1] = torch.from_dlpack(dlpack_out).movedim(0, -1).unsqueeze(0)
 
-        return io.NodeOutput(out_tensor)
+        return io.NodeOutput(out_tensor.to(images.device))
 
 
 class NVVFXVideoExtension(ComfyExtension):
