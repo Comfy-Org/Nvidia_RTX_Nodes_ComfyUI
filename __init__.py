@@ -41,7 +41,14 @@ class RTXVideoSuperResolution(io.ComfyNode):
                         ])
                     ],
                 ),
+                io.Combo.Input(
+                    "upscaleType",
+                    options=["UPSCALE", "DENOISE", "DEBLUR", "HIGHBITRATE"],
+                    default="UPSCALE",
+                    tooltip="Select the processing mode: Upscale, Denoise, Deblur or High Bitrate."
+                ),
                 io.Combo.Input("quality", options=["LOW", "MEDIUM", "HIGH", "ULTRA"], default="ULTRA"),
+																										   
             ],
             outputs=[
                 io.Image.Output("upscaled_images"),
@@ -49,9 +56,10 @@ class RTXVideoSuperResolution(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, images: torch.Tensor, resize_type: UpscaleTypedDict, quality: str) -> io.NodeOutput:
+    def execute(cls, images: torch.Tensor, resize_type: UpscaleTypedDict, upscaleType: str, quality: str) -> io.NodeOutput:
         b, h, w, c = images.shape
 
+        # Determine output dimensions
         selected_type = resize_type["resize_type"]
         if selected_type == UpscaleType.SCALE_BY:
             scale = resize_type["scale"]
@@ -71,13 +79,39 @@ class RTXVideoSuperResolution(io.ComfyNode):
         out_pixels = output_width * output_height
         batch_size = max(1, MAX_PIXELS // out_pixels)
 
+        # Combine upscaleType and quality for the proper QualityLevel
+        combined_key = f"{upscaleType}_{quality}"
+
         quality_mapping = {
-            "LOW": nvvfx.effects.QualityLevel.LOW,
-            "MEDIUM": nvvfx.effects.QualityLevel.MEDIUM,
-            "HIGH": nvvfx.effects.QualityLevel.HIGH,
-            "ULTRA": nvvfx.effects.QualityLevel.ULTRA,
+            # UPSCALE mode
+            "UPSCALE_LOW": nvvfx.effects.QualityLevel.LOW,
+            "UPSCALE_MEDIUM": nvvfx.effects.QualityLevel.MEDIUM,
+            "UPSCALE_HIGH": nvvfx.effects.QualityLevel.HIGH,
+            "UPSCALE_ULTRA": nvvfx.effects.QualityLevel.ULTRA,
+            
+            # DENOISE mode
+            "DENOISE_LOW": nvvfx.effects.QualityLevel.DENOISE_LOW,
+            "DENOISE_MEDIUM": nvvfx.effects.QualityLevel.DENOISE_MEDIUM,
+            "DENOISE_HIGH": nvvfx.effects.QualityLevel.DENOISE_HIGH,
+            "DENOISE_ULTRA": nvvfx.effects.QualityLevel.DENOISE_ULTRA,
+            
+            # DEBLUR mode
+            "DEBLUR_LOW": nvvfx.effects.QualityLevel.DEBLUR_LOW,
+            "DEBLUR_MEDIUM": nvvfx.effects.QualityLevel.DEBLUR_MEDIUM,
+            "DEBLUR_HIGH": nvvfx.effects.QualityLevel.DEBLUR_HIGH,
+            "DEBLUR_ULTRA": nvvfx.effects.QualityLevel.DEBLUR_ULTRA,
+            
+            # HIGHBITRATE mode
+            "HIGHBITRATE_LOW": nvvfx.effects.QualityLevel.HIGHBITRATE_LOW,
+            "HIGHBITRATE_MEDIUM": nvvfx.effects.QualityLevel.HIGHBITRATE_MEDIUM,
+            "HIGHBITRATE_HIGH": nvvfx.effects.QualityLevel.HIGHBITRATE_HIGH,
+            "HIGHBITRATE_ULTRA": nvvfx.effects.QualityLevel.HIGHBITRATE_ULTRA,
         }
-        selected_quality = quality_mapping.get(quality, nvvfx.effects.QualityLevel.HIGH)
+
+        selected_quality = quality_mapping.get(
+            combined_key,
+            nvvfx.effects.QualityLevel.HIGH  # fallback
+        )
 
         with nvvfx.VideoSuperRes(selected_quality) as sr:
             sr.output_width = output_width
