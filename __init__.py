@@ -1,4 +1,8 @@
 import torch
+try:
+    import tensorrt
+except ImportError:
+    pass
 import nvvfx
 from enum import Enum
 from typing import TypedDict
