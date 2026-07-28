@@ -92,8 +92,12 @@ class RTXVideoSuperResolution(io.ComfyNode):
 
                 for j in range(batch_cuda.shape[0]):
                     input_frame = batch_cuda[j]
-                    dlpack_out = sr.run(input_frame).image
-                    out_tensor[i + j: i + j + 1] = torch.from_dlpack(dlpack_out).movedim(0, -1).unsqueeze(0)
+                    result = sr.run(input_frame)
+                    dlpack_out = result.image
+                    out_frame = torch.from_dlpack(dlpack_out).movedim(0, -1).unsqueeze(0).clone()
+                    out_tensor[i + j: i + j + 1] = out_frame
+                    del dlpack_out, result, out_frame
+                    torch.cuda.empty_cache()
 
         return io.NodeOutput(out_tensor)
 
